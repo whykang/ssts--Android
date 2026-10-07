@@ -78,6 +78,8 @@
   var INSTANCE = '25304';
 
   function units(bookUrl, p) { return 'https://api.bookan.com.cn/voice/album/units?album_id=' + bookUrl + '&page=' + p + '&num=20&order=1'; }
+  var lastPages = {}; // 搜索时每个关键词下图书 / 专辑各有多少页：{ 关键词: { book: 17, album: 0 } }
+
   function parseUnits(data) { return items(data, 'list').map(function (i) { return { title: str(i, 'title'), url: str(i, 'file') }; }); }
 
   registerSource({
@@ -85,18 +87,27 @@
     description: '推荐指数:5星 ⭐⭐⭐⭐⭐\n图书馆数字资源，经典名著、人文社科类有声书。',
     multipleEpisodePages: true,
 
-    search: function (keywords) {
-      var host = this.host, books = [];
-      ['book', 'album'].forEach(function (type) {
+    // 图书和专辑是两个接口，各自分页：按传入的页码请求，总页数取两者中较大的；
+    // 某一类已经翻完（页码超过它的最后一页）就不再请求它
+    search: function (keywords, page) {
+      var host = this.host, books = [], failed = 0;
+      var known = lastPages[keywords] || (lastPages[keywords] = {});
+      var types = ['book', 'album'];
+      types.forEach(function (type) {
+        if (known[type] !== undefined && page > known[type]) return;
         try {
-          var json = host.getJson('https://es.bookan.com.cn/api/v3/voice/' + type + '?instanceId=' + INSTANCE + '&keyword=' + Shun.enc(keywords) + '&pageNum=1&limitNum=20');
+          var json = host.getJson('https://es.bookan.com.cn/api/v3/voice/' + type + '?instanceId=' + INSTANCE + '&keyword=' + Shun.enc(keywords) +
+            '&pageNum=' + page + '&limitNum=20');
+          known[type] = int(json, 'data.last_page', 0);
           items(json, 'data.list').forEach(function (i) { books.push({ coverUrl: str(i, 'cover'), bookUrl: str(i, 'id'), title: str(i, 'name') }); });
         } catch (e) {
           if (e.cancelled) throw e;
+          failed++;
           host.log('搜索 ' + type + ' 失败：' + e.message);
         }
       });
-      return { books: books, totalPage: 1 };
+      if (failed === types.length) throw new Error('博看有声搜索失败，请稍后再试');
+      return { books: books, totalPage: Math.max(page, known.book || 0, known.album || 0) };
     },
 
     categoryMenus: function () {

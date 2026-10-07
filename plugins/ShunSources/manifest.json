@@ -1,7 +1,7 @@
 {
   "name": "ShunSources",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "author": "shun（移植）",
   "description": "听书源合集（从 Windows 版 ShunSources.Plugin 移植）",
-  "scripts": ["common.js", "cms.js", "sites.js", "api.js", "zblog.js"]
+  "scripts": ["common.js", "cms.js", "sites.js", "api.js", "zblog.js", "ximalaya.js"]
 }

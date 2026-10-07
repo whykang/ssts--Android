@@ -41,7 +41,9 @@
 
 这个仓库放的是插件相关的部分：开发文档、示例插件的源码和打好的插件包。
 
-- 📦 [plugins/dist/ShunSources.zip](plugins/dist/ShunSources.zip)：打好的插件包（18 个听书源），下载后在 App 的“插件”页点 `+` →“从文件导入 zip”
+- 📦 [plugins/dist/ShunSources.zip](plugins/dist/ShunSources.zip)：打好的插件包（19 个听书源），下载后在 App 的“插件”页点 `+` →“从文件导入 zip”
+> 插件包 2.1.0 新增了“喜马拉雅”，并修复了“博看有声”搜索只能看到第一页的问题。喜马拉雅需要配合最新版的 App 使用，旧版 App 导入后其它源不受影响。
+
 - 📖 [插件开发指南](docs/plugin-development.md)：插件包结构、源的写法、宿主提供的能力、调试和打包
 - 🧩 [plugins/ShunSources](plugins/ShunSources)：示例插件的源码，覆盖了文档里提到的大部分写法
 

@@ -5,7 +5,7 @@
 
 > Windows 版的插件是 .NET DLL，安卓上无法加载，所以安卓版改用脚本。接口和 Windows 版的 `SourceBase` 一一对应，移植基本是逐行翻译。
 
-完整示例：[plugins/ShunSources](../plugins/ShunSources)，18 个源，覆盖了本文提到的大部分写法。
+完整示例：[plugins/ShunSources](../plugins/ShunSources)，19 个源，覆盖了本文提到的大部分写法。
 
 ## 1. 插件包结构
 
@@ -82,7 +82,7 @@ registerSource({
 | `host` | 宿主注入的能力，见第 4 节 |
 
 书：`{ coverUrl, bookUrl, title, author, artist, intro, status }`，`bookUrl` 在同一个源内必须唯一。
-章节：`{ title, url, isFree }`，`isFree` 默认 true。
+章节：`{ title, url, isFree, live }`，`isFree` 默认 true；`live: true` 表示这是直播流（电台），宿主会按直播来播放：不显示进度、不能拖动和下载。
 
 分类标签的地址不一定是网址，可以是任意字符串，宿主只会把它原样传回 `categoryPage`，例如 `my-search:关键词#1`。
 
@@ -125,6 +125,7 @@ registerSource({
 | `sleep(毫秒)` | 等待 |
 | `readCache(name)` / `writeCache(name, text)` / `cacheAge(name)` | 源独立的缓存文件；`cacheAge` 返回距今多少毫秒，不存在为 -1 |
 | `base64Decode` / `base64Encode` / `md5` / `sha256` / `uuid()` / `htmlDecode` | 常用工具 |
+| `aesEcbDecrypt(data, keyHex)` | AES-ECB 解密（PKCS7 填充）：`data` 是 base64，`keyHex` 是十六进制密钥，返回文本；失败返回空字符串 |
 | `userAgent(desktop)` | 用户在设置里配置的 UA |
 
 请求选项 `options`：
@@ -146,6 +147,7 @@ registerSource({
 | `audioHeaders(audioUrl)` | 播放音频时附加请求头（例如 `Referer` 防盗链），返回 `{ ... }` 或 `null` |
 | `coverHeaders(coverUrl)` | 加载封面时附加请求头，返回 `{ ... }` 或 `null`。先判断封面地址属于自己 |
 | `loginUrl` / `loginDesktop` | 需要登录的源：插件页面会出现“登录”按钮，在 App 内的网页里完成登录 |
+| `checkLogin()` | 配合 `loginUrl`：登录页关闭后宿主会调用它确认是否登录成功。已登录时返回昵称（或 `true`），插件页会显示“已登录”；没登录时抛出错误。不写这个方法，宿主就不知道登录状态，只显示“登录”按钮 |
 | `searchVerificationUrl(keywords)` | 搜索需要人机验证：搜索失败或没有结果时，搜索页会出现“验证”按钮，用户通过验证（页面标题不再包含“验证”）后自动返回并重新搜索。配合 `searchVerificationDesktop`（默认 true）、`searchDelaySeconds`（网站限制两次搜索最小间隔时用） |
 | `updateEpisodes(bookUrl, known)` | 增量更新章节，见第 6 节 |
 | `config` | 设置项数组，插件页面会出现“设置”按钮：`{ type: 'text' | 'switch' | 'select', key, label, default, options }`，值用 `this.host.getPref(key)` 读取 |
