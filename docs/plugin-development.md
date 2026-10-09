@@ -5,7 +5,7 @@
 
 > Windows 版的插件是 .NET DLL，安卓上无法加载，所以安卓版改用脚本。接口和 Windows 版的 `SourceBase` 一一对应，移植基本是逐行翻译。
 
-完整示例：[plugins/ShunSources](../plugins/ShunSources)，19 个源，覆盖了本文提到的大部分写法。
+完整示例：[plugins/ShunSources](../plugins/ShunSources)，26 个源，覆盖了本文提到的大部分写法。
 
 ## 1. 插件包结构
 

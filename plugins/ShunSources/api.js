@@ -456,3 +456,611 @@
     }
   });
 })();
+
+// ---------- 听友听书（tingyou.fm）：网站自己的 JSON 接口 ----------
+(function () {
+  var SITE = 'https://tingyou.fm';
+  // 接口的域名网站会换：先用上次能用的，再挨个试已知的，都不行就到网站首页里找现在用的是哪个
+  var BASES = ['https://api-preview.toulaopao.cc/api', 'https://appp.fdhtbz.cn/api', 'https://laopaoaappi.oobyvy.vip/api'];
+  var working = null;
+  var session = null;   // 网站每次打开生成一个会话标识，这里照做
+  var filters = null;   // 分类筛选项，取一次就够
+
+  // 接口只认从网站页面发出的请求（看 Origin）
+  function options(host, body) {
+    if (!session) session = host.uuid();
+    var o = { headers: { Origin: SITE, Referer: SITE + '/', Accept: 'application/json', 'x-listening-session': session, 'x-listening-timezone': 'Asia/Shanghai' } };
+    if (body !== undefined) { o.method = 'POST'; o.body = JSON.stringify(body); o.contentType = 'application/json'; }
+    return o;
+  }
+
+  function discover(host) {
+    try {
+      var m = /https:\/\/[a-z0-9.-]+\/api(?=["\\/])/i.exec(host.getString(SITE + '/listening'));
+      return m ? m[0] : null;
+    } catch (e) { return null; }
+  }
+
+  // 请求接口并解析成 JSON。allowEmpty：翻到最后一页以后接口返回空内容，不算出错
+  function call(host, path, body, allowEmpty) {
+    var tried = {}, last = null;
+    var list = [working || host.getPref('base')].concat(BASES);
+    for (var i = 0; i <= list.length; i++) {
+      var base = i < list.length ? list[i] : discover(host);
+      if (!base || tried[base]) continue;
+      tried[base] = true;
+      try {
+        var text = host.getString(base + '/h5/listening/' + path, options(host, body));
+        if (!text.trim() && allowEmpty) return {};
+        var json = parseJson(text);
+        if (json && json.error) throw new Error(str(json, 'message') || '接口返回错误');
+        if (working !== base) { working = base; host.setPref('base', base); }
+        return json;
+      } catch (e) {
+        if (e.cancelled) throw e;
+        last = e;
+      }
+    }
+    throw new Error('听友听书的接口现在访问不了：' + (last ? last.message : '没有可用的地址'));
+  }
+
+  function albumId(url) {
+    var m = /album\/(\d+)/.exec(url);
+    if (!m) throw new Error('不认识的地址：' + url);
+    return m[1];
+  }
+
+  function toBook(a) {
+    var count = int(a, 'count');
+    return {
+      coverUrl: str(a, 'cover_url'), bookUrl: SITE + '/listening/album/' + str(a, 'id'), title: str(a, 'title').trim(),
+      author: str(a, 'author'), artist: str(a, 'teller'), intro: str(a, 'intro') || str(a, 'description') || str(a, 'synopsis'),
+      status: (int(a, 'status') === 0 ? '已完结' : '连载中') + (count > 0 ? ' · ' + count + ' 集' : '')
+    };
+  }
+
+  var SORTS = { '综合排序': 'comprehensive', '播放最多': 'popular', '最近更新': 'updated', '最新发布': 'new' };
+
+  registerSource({
+    id: 'a6d1c3f08b2e4759b8e0f4a27c915d36', name: '听友听书', url: SITE + '/listening',
+    description: '有声小说和评书比较全，更新快。直接用网站的接口，不需要登录。',
+    config: [{ type: 'select', key: 'sort', label: '分类里的排序', default: '播放最多', options: ['综合排序', '播放最多', '最近更新', '最新发布'] }],
+
+    search: function (keywords, page) {
+      var json = call(this.host, 'search', { keyword: keywords, page: page });
+      var books = items(json, 'results').map(toBook);
+      // 接口只说“后面还有没有”，没有总页数：有就再翻一页
+      return { books: books, totalPage: json.has_more && books.length > 0 ? page + 1 : page };
+    },
+
+    categoryMenus: function () {
+      var menus = [{ title: '推荐', tabs: [['最新', 'latest'], ['热门', 'hot'], ['推荐', 'recommend'], ['连载', 'serial']].map(function (t) {
+        return { title: t[0], url: 'tingyou:rank:' + t[1] + '#1' };
+      }) }];
+      if (!filters) filters = call(this.host, 'filters');
+      items(filters, 'categories').forEach(function (c) {
+        var tabs = [{ title: '全部', url: 'tingyou:cat:category=' + str(c, 'id') + '#1' }].concat(items(c, 'types').map(function (t) {
+          return { title: str(t, 'name'), url: 'tingyou:cat:type=' + str(t, 'id') + '#1' };
+        }));
+        menus.push({ title: str(c, 'name'), tabs: tabs });
+      });
+      return menus;
+    },
+
+    categoryPage: function (url) {
+      var m = /^tingyou:(rank|cat):([^#]+)#(\d+)$/.exec(url);
+      if (!m) throw new Error('不认识的分类地址：' + url);
+      var page = parseInt(m[3], 10), next = 'tingyou:' + m[1] + ':' + m[2] + '#' + (page + 1), books, total;
+      if (m[1] === 'rank') {
+        var r = call(this.host, 'rank?section=' + m[2] + '&page=' + page, undefined, true);
+        books = items(r, 'items').map(toBook);
+        var size = int(r, 'page_size', 30) || 30;
+        total = r.has_more ? Math.max(page + 1, Math.ceil(int(r, 'total') / size)) : page;
+      } else {
+        var sort = SORTS[this.host.getPref('sort', '播放最多')] || 'popular';
+        var c = call(this.host, 'category?sort=' + sort + '&' + m[2] + '&page=' + page, undefined, true);
+        books = items(c, 'data').map(toBook);
+        total = Math.max(page, int(c, 'pages', page));
+      }
+      if (books.length === 0) total = page;
+      return { books: books, currentPage: page, totalPage: total, nextUrl: page < total ? next : null };
+    },
+
+    bookDetail: function (bookUrl, loadEpisodes) {
+      var id = albumId(bookUrl);
+      var a = call(this.host, 'album/' + id);
+      if (a.available === false) throw new Error('这本书已经下架了');
+      var detail = toBook(a);
+      detail.episodes = [];
+      if (loadEpisodes) {
+        var c = call(this.host, 'chapters/' + id);
+        // 章节地址里记下“第几集”，取播放地址时要用
+        detail.episodes = items(c, 'chapters').map(function (ch) {
+          return { title: str(ch, 'title').trim() || ('第 ' + int(ch, 'index') + ' 集'), url: SITE + '/listening/album/' + id + '#' + int(ch, 'index') };
+        });
+      }
+      return detail;
+    },
+
+    // 播放地址带时效和签名，每次现取
+    audio: function (url) {
+      var m = /album\/(\d+)#(\d+)$/.exec(url);
+      if (!m) throw new Error('不认识的章节地址：' + url);
+      var json = call(this.host, 'play', { album_id: m[1], chapter_idx: parseInt(m[2], 10) });
+      var play = str(json, 'play_url');
+      if (!play) throw new Error(str(json, 'detail') || str(json, 'message') || '没有拿到播放地址');
+      return play;
+    }
+  });
+})();
+
+// ---------- 蜻蜓FM（qtfm.cn）：网站自己的接口，音频地址要带签名 ----------
+(function () {
+  var SITE = 'https://www.qtfm.cn';
+  var CAPI = 'https://i.qtfm.cn/capi/';
+  var PAGE = 100; // 节目列表一页最多给 100 条
+
+  // --- HMAC-MD5（音频地址的签名用）。按字节算，不能用宿主的 md5（那个是按文本算的） ---
+  function md5(bytes) {
+    function add(x, y) { var l = (x & 0xFFFF) + (y & 0xFFFF); return (((x >> 16) + (y >> 16) + (l >> 16)) << 16) | (l & 0xFFFF); }
+    function rol(n, c) { return (n << c) | (n >>> (32 - c)); }
+    function cmn(q, a, b, x, s, t) { return add(rol(add(add(a, q), add(x, t)), s), b); }
+    function ff(a, b, c, d, x, s, t) { return cmn((b & c) | (~b & d), a, b, x, s, t); }
+    function gg(a, b, c, d, x, s, t) { return cmn((b & d) | (c & ~d), a, b, x, s, t); }
+    function hh(a, b, c, d, x, s, t) { return cmn(b ^ c ^ d, a, b, x, s, t); }
+    function ii(a, b, c, d, x, s, t) { return cmn(c ^ (b | ~d), a, b, x, s, t); }
+    var n = bytes.length, words = [], i;
+    for (i = 0; i < n; i++) words[i >> 2] |= bytes[i] << ((i % 4) * 8);
+    words[n >> 2] |= 0x80 << ((n % 4) * 8);
+    words[(((n + 8) >> 6) << 4) + 14] = n * 8;
+    var a = 1732584193, b = -271733879, c = -1732584194, d = 271733878;
+    for (i = 0; i < words.length; i += 16) {
+      var x = [], k; for (k = 0; k < 16; k++) x[k] = words[i + k] | 0;
+      var oa = a, ob = b, oc = c, od = d;
+      a = ff(a, b, c, d, x[0], 7, -680876936); d = ff(d, a, b, c, x[1], 12, -389564586); c = ff(c, d, a, b, x[2], 17, 606105819); b = ff(b, c, d, a, x[3], 22, -1044525330);
+      a = ff(a, b, c, d, x[4], 7, -176418897); d = ff(d, a, b, c, x[5], 12, 1200080426); c = ff(c, d, a, b, x[6], 17, -1473231341); b = ff(b, c, d, a, x[7], 22, -45705983);
+      a = ff(a, b, c, d, x[8], 7, 1770035416); d = ff(d, a, b, c, x[9], 12, -1958414417); c = ff(c, d, a, b, x[10], 17, -42063); b = ff(b, c, d, a, x[11], 22, -1990404162);
+      a = ff(a, b, c, d, x[12], 7, 1804603682); d = ff(d, a, b, c, x[13], 12, -40341101); c = ff(c, d, a, b, x[14], 17, -1502002290); b = ff(b, c, d, a, x[15], 22, 1236535329);
+      a = gg(a, b, c, d, x[1], 5, -165796510); d = gg(d, a, b, c, x[6], 9, -1069501632); c = gg(c, d, a, b, x[11], 14, 643717713); b = gg(b, c, d, a, x[0], 20, -373897302);
+      a = gg(a, b, c, d, x[5], 5, -701558691); d = gg(d, a, b, c, x[10], 9, 38016083); c = gg(c, d, a, b, x[15], 14, -660478335); b = gg(b, c, d, a, x[4], 20, -405537848);
+      a = gg(a, b, c, d, x[9], 5, 568446438); d = gg(d, a, b, c, x[14], 9, -1019803690); c = gg(c, d, a, b, x[3], 14, -187363961); b = gg(b, c, d, a, x[8], 20, 1163531501);
+      a = gg(a, b, c, d, x[13], 5, -1444681467); d = gg(d, a, b, c, x[2], 9, -51403784); c = gg(c, d, a, b, x[7], 14, 1735328473); b = gg(b, c, d, a, x[12], 20, -1926607734);
+      a = hh(a, b, c, d, x[5], 4, -378558); d = hh(d, a, b, c, x[8], 11, -2022574463); c = hh(c, d, a, b, x[11], 16, 1839030562); b = hh(b, c, d, a, x[14], 23, -35309556);
+      a = hh(a, b, c, d, x[1], 4, -1530992060); d = hh(d, a, b, c, x[4], 11, 1272893353); c = hh(c, d, a, b, x[7], 16, -155497632); b = hh(b, c, d, a, x[10], 23, -1094730640);
+      a = hh(a, b, c, d, x[13], 4, 681279174); d = hh(d, a, b, c, x[0], 11, -358537222); c = hh(c, d, a, b, x[3], 16, -722521979); b = hh(b, c, d, a, x[6], 23, 76029189);
+      a = hh(a, b, c, d, x[9], 4, -640364487); d = hh(d, a, b, c, x[12], 11, -421815835); c = hh(c, d, a, b, x[15], 16, 530742520); b = hh(b, c, d, a, x[2], 23, -995338651);
+      a = ii(a, b, c, d, x[0], 6, -198630844); d = ii(d, a, b, c, x[7], 10, 1126891415); c = ii(c, d, a, b, x[14], 15, -1416354905); b = ii(b, c, d, a, x[5], 21, -57434055);
+      a = ii(a, b, c, d, x[12], 6, 1700485571); d = ii(d, a, b, c, x[3], 10, -1894986606); c = ii(c, d, a, b, x[10], 15, -1051523); b = ii(b, c, d, a, x[1], 21, -2054922799);
+      a = ii(a, b, c, d, x[8], 6, 1873313359); d = ii(d, a, b, c, x[15], 10, -30611744); c = ii(c, d, a, b, x[6], 15, -1560198380); b = ii(b, c, d, a, x[13], 21, 1309151649);
+      a = ii(a, b, c, d, x[4], 6, -145523070); d = ii(d, a, b, c, x[11], 10, -1120210379); c = ii(c, d, a, b, x[2], 15, 718787259); b = ii(b, c, d, a, x[9], 21, -343485551);
+      a = add(a, oa); b = add(b, ob); c = add(c, oc); d = add(d, od);
+    }
+    var out = [];
+    [a, b, c, d].forEach(function (w) { for (var j = 0; j < 4; j++) out.push((w >> (j * 8)) & 0xFF); });
+    return out;
+  }
+  function ascii(s) { var r = []; for (var i = 0; i < s.length; i++) r.push(s.charCodeAt(i) & 0xFF); return r; }
+  function hmacMd5Hex(key, message) {
+    var k = ascii(key), i;
+    if (k.length > 64) k = md5(k);
+    while (k.length < 64) k.push(0);
+    var inner = [], outer = [];
+    for (i = 0; i < 64; i++) { inner.push(k[i] ^ 0x36); outer.push(k[i] ^ 0x5C); }
+    return md5(outer.concat(md5(inner.concat(ascii(message))))).map(function (b) { return (b < 16 ? '0' : '') + b.toString(16); }).join('');
+  }
+
+  // --- 登录 ---
+  // 用蜻蜓手机版的登录页。登录后网站把身份信息写在 Cookie 里（.qtfm.cn 整个域名下都能读到）：
+  // qingting_id 是用户编号，access_token 是访问令牌，refresh_token 用来换新令牌。
+  // Cookie 只留三天，所以读到以后记到源的设置里；令牌失效了用 refresh_token 换新的。
+  var LOGIN = 'https://sss.qtfm.cn/account/mobile/login.html?wx=0&qq=0&wb=0&redirect_uri=' + encodeURIComponent('https://m.qtfm.cn/');
+
+  function cookieValues(host) {
+    var o = {};
+    String(host.cookies('https://m.qtfm.cn/') || '').split(';').forEach(function (p) {
+      var i = p.indexOf('=');
+      if (i > 0) { try { o[p.substring(0, i).trim()] = decodeURIComponent(p.substring(i + 1).trim()); } catch (e) { o[p.substring(0, i).trim()] = p.substring(i + 1).trim(); } }
+    });
+    return o;
+  }
+
+  function saved(host) {
+    return { uat: host.getPref('uat', ''), refresh: host.getPref('refresh', ''), access: host.getPref('access', ''), seen: host.getPref('seen', '') };
+  }
+  function save(host, s) {
+    host.setPref('uat', s.uat || null); host.setPref('refresh', s.refresh || null);
+    host.setPref('access', s.access || null); host.setPref('seen', s.seen || null);
+  }
+
+  // 现在的登录信息；没登录返回 null。Cookie 里的令牌和上次见到的不一样，说明刚（重新）登录过，以 Cookie 为准
+  function login(host) {
+    var s = saved(host), c = cookieValues(host);
+    if (c.qingting_id && c.access_token && c.access_token !== s.seen) {
+      s = { uat: c.qingting_id, access: c.access_token, refresh: c.refresh_token || '', seen: c.access_token };
+      save(host, s);
+    }
+    return s.uat && (s.access || s.refresh) ? s : null;
+  }
+
+  // 用 refresh_token 换一个新的访问令牌；换不了返回 false
+  function renew(host, s) {
+    if (!s.refresh) return false;
+    try {
+      var r = host.fetch('https://user.qtfm.cn/u2/api/v4/auth', {
+        desktop: true, method: 'POST', contentType: 'application/json',
+        body: JSON.stringify({ grant_type: 'refresh_token', refresh_token: s.refresh, qingting_id: s.uat, device_id: 'web' })
+      });
+      var json = parseJson(r.body), data = at(json, 'data');
+      if (!data || !str(data, 'access_token')) {
+        // 服务器明确说换不了（refresh_token 不存在或已作废）：登录已经失效，把记着的登录信息清掉，免得每次播放都白试一次
+        if (int(json, 'errorno') !== 0) save(host, {});
+        return false;
+      }
+      s.access = str(data, 'access_token');
+      if (str(data, 'refresh_token')) s.refresh = str(data, 'refresh_token');
+      save(host, s);
+      return true;
+    } catch (e) { if (e.cancelled) throw e; return false; }
+  }
+
+  function api(host, url) {
+    var json = host.getJson(url, { desktop: true, headers: { Referer: SITE + '/' } });
+    var code = str(json, 'errorno') || str(json, 'errcode');
+    if (code && code !== '0') throw new Error('蜻蜓FM 接口返回错误：' + (str(json, 'errormsg') || str(json, 'errmsg')) + '（' + code + '）');
+    return json;
+  }
+
+  function https(u) { return u.replace(/^http:\/\//, 'https://'); }
+  function channelId(url) {
+    var m = /channels\/(\d+)/.exec(url);
+    if (!m) throw new Error('不认识的地址：' + url);
+    return m[1];
+  }
+
+  function toBook(c) {
+    var play = str(c, 'playcount');
+    return {
+      coverUrl: https(str(c, 'cover')), bookUrl: SITE + '/channels/' + str(c, 'id') + '/', title: str(c, 'title').trim(),
+      artist: str(c, 'podcaster'), intro: str(c, 'description'), status: play ? '播放 ' + play : ''
+    };
+  }
+
+  // paid：这张专辑是不是收费的。免费专辑的节目全都能听，接口里也不带 isfree 这个字段；
+  // 收费专辑里只有试听的那几集带 isfree=true，其余的要购买或开会员
+  function toEpisodes(cid, json, paid) {
+    return items(json, 'data.programs').map(function (p) {
+      return { title: str(p, 'title').trim(), url: SITE + '/channels/' + cid + '/programs/' + str(p, 'id') + '/', isFree: !paid || p.isfree === true };
+    });
+  }
+
+  registerSource({
+    id: 'b7e3a9c15d0f4b62a8c4e17f3d9b0a68', name: '蜻蜓FM', url: SITE + '/',
+    description: '小说、评书、相声、广播剧、历史人文都有。免费专辑可以直接听；收费专辑只有前面试听的几集能听，其余带锁的要在蜻蜓购买或开会员——在插件页面点“登录”，用自己的蜻蜓账号（手机号）登录后就能听已购买的内容。章节很多的书加载要一点时间。',
+    multipleEpisodePages: true,
+    loginUrl: LOGIN,
+    loginDesktop: false,
+
+    // 登录页关掉后宿主会来问：登录了返回昵称，没登录抛出错误
+    checkLogin: function () {
+      var s = login(this.host);
+      if (!s) throw new Error('还没有登录蜻蜓FM');
+      try { return str(api(this.host, 'https://user.qtfm.cn/u2/api/v4/user/' + s.uat), 'data.nick_name'); } catch (e) { if (e.cancelled) throw e; return ''; }
+    },
+
+    search: function (keywords, page) {
+      var json = api(this.host, 'https://search.qtfm.cn/v3/search?categoryid=0&k=' + Shun.enc(keywords) + '&page=' + page + '&pagesize=20&include=channel_ondemand');
+      var found = int(json, 'data.data.numFound');
+      return { books: items(json, 'data.data.docs').map(toBook), totalPage: Math.max(1, Math.min(50, Math.ceil(found / 20))) };
+    },
+
+    categoryMenus: function () {
+      function tabs(list) { return list.map(function (c) { return { title: c[0], url: 'qtfm:' + c[1] + ':' + (c[2] || 0) + '#1' }; }); }
+      return [
+        { title: '听书', tabs: tabs([['小说', 521], ['男生爱听', 521, 3289], ['女生爱听', 521, 3290], ['多人有声剧', 521, 5544], ['评书', 3496], ['相声小品', 527],
+          ['广播剧', 3442], ['出版精品', 3636], ['儿童', 1599], ['戏曲', 3276], ['二次元', 3427]]) },
+        { title: '知识', tabs: tabs([['历史', 531], ['文化', 3613], ['情感', 529], ['脱口秀', 3251], ['播客', 3873], ['头条', 545], ['财经', 533], ['科技', 535],
+          ['教育', 537], ['外语', 543], ['音乐', 523], ['娱乐', 547], ['生活', 3670], ['汽车', 3385], ['校园', 1737], ['母婴', 3675]]) }
+      ];
+    },
+
+    // 分类地址：qtfm:分类:筛选项#页码，一页 12 本
+    categoryPage: function (url) {
+      var m = /^qtfm:(\d+):(\d+)#(\d+)$/.exec(url);
+      if (!m) throw new Error('不认识的分类地址：' + url);
+      var page = parseInt(m[3], 10);
+      var json = api(this.host, CAPI + 'neo-channel-filter?category=' + m[1] + '&attrs=' + m[2] + '&curpage=' + page);
+      var books = items(json, 'data.channels').map(toBook);
+      var total = books.length === 0 ? page : Math.max(page, Math.ceil(int(json, 'total') / 12));
+      return { books: books, currentPage: page, totalPage: total, nextUrl: page < total ? 'qtfm:' + m[1] + ':' + m[2] + '#' + (page + 1) : null };
+    },
+
+    bookDetail: function (bookUrl, loadEpisodes, loadFullPages) {
+      var host = this.host, cid = channelId(bookUrl);
+      var c = at(api(host, CAPI + 'v3/channel/' + cid), 'data') || {};
+      var count = int(c, 'program_count');
+      var detail = {
+        title: str(c, 'title').trim(), coverUrl: https(str(c, 'cover')), intro: str(c, 'description'),
+        artist: items(c, 'podcasters').map(function (p) { return str(p, 'nick_name'); }).filter(function (n) { return n; }).join('、'),
+        status: (str(c, 'finished') === '1' ? '已完结' : '连载中') + (count > 0 ? ' · ' + count + ' 集' : ''), episodes: []
+      };
+      if (!loadEpisodes) return detail;
+      // 节目列表的地址里要带专辑的“版本号”
+      var base = CAPI + 'channel/' + cid + '/programs/' + str(c, 'v') + '?pagesize=' + PAGE + '&order=asc&curpage=';
+      // 专辑信息里 purchase.item_type 不是 0 的才是收费专辑
+      var paid = int(c, 'purchase.item_type') !== 0;
+      var first = api(host, base + 1);
+      detail.episodes = toEpisodes(cid, first, paid);
+      var pages = Math.ceil(int(first, 'data.total') / PAGE);
+      if (loadFullPages && pages > 1) {
+        var urls = [];
+        for (var p = 2; p <= pages; p++) urls.push(base + p);
+        var done = 0;
+        // 一批 6 页同时取，每取完一批报一次进度
+        for (var i = 0; i < urls.length; i += 6) {
+          var batch = urls.slice(i, i + 6);
+          host.getStrings(batch, { desktop: true, headers: { Referer: SITE + '/' } }, 6).forEach(function (text, k) {
+            if (text === null) throw new Error('第 ' + (i + k + 2) + ' 页章节加载失败，请重试');
+            detail.episodes = detail.episodes.concat(toEpisodes(cid, parseJson(text), paid));
+          });
+          done += batch.length;
+          host.progress((done + 1) + ' / ' + pages);
+        }
+        host.progress(null);
+      }
+      return detail;
+    },
+
+    // 音频地址：路径 + 登录信息 + 时间，用固定的密钥做 HMAC-MD5 签名（和电脑版网页一样）；访问后会跳转到真正的文件。
+    // 没登录时登录信息留空，只能取到免费的和试听的
+    audio: function (url) {
+      var host = this.host, m = /channels\/(\d+)\/programs\/(\d+)/.exec(url);
+      if (!m) throw new Error('不认识的章节地址：' + url);
+      function signed(s) {
+        var path = '/audiostream/redirect/' + m[1] + '/' + m[2] + '?access_token=' + (s ? encodeURIComponent(s.access) : '') +
+          '&device_id=MOBILESITE&qingting_id=' + (s ? encodeURIComponent(s.uat) : '') + '&t=' + new Date().getTime();
+        return 'https://audio.qtfm.cn' + path + '&sign=' + hmacMd5Hex('7l8CZ)SgZgM_bkrw', path);
+      }
+      var s = login(host);
+      if (!s) return signed(null);
+      // 带着登录信息时，令牌要是已经失效，连免费的节目服务器也会拒绝（401）。所以先问一下：
+      // 被拒绝就换一个新令牌再试；还不行就把令牌作废，这一次按没登录的方式取
+      function rejected(link) {
+        try { return host.status(link, { desktop: true, headers: { Range: 'bytes=0-1' } }) === 401; } catch (e) { if (e.cancelled) throw e; return false; }
+      }
+      var link = s.access ? signed(s) : '';
+      if (link && !rejected(link)) return link;
+      if (renew(host, s)) {
+        link = signed(s);
+        if (!rejected(link)) return link;
+      }
+      host.setPref('access', null);
+      return signed(null);
+    }
+  });
+})();
+
+// ---------- 书音FM（m.mekui.com）：网站自己的 JSON 接口 ----------
+(function () {
+  var SITE = 'https://m.mekui.com';
+  var API = SITE + '/ecmsapi/index.php?';
+  var KEY = '056a308c515e16b2fe5a5c631319339cbc60a8ee0e03d016'; // 取播放地址时签名用的固定密钥（网页脚本里写着）
+  var CHAPTERS = 500; // 章节列表一页取多少
+  var menus = null;
+
+  function options() { return { headers: { Referer: SITE + '/', Accept: 'application/json, text/plain, */*' } }; }
+
+  function call(host, query) {
+    var json = host.getJson(API + query, options());
+    if (int(json, 'code') !== 1) throw new Error('书音FM：' + (str(json, 'message') || str(json, 'msg') || '接口返回错误'));
+    return json;
+  }
+
+  function toBook(b) {
+    return {
+      coverUrl: str(b, 'titlepic'), bookUrl: SITE + '/album-' + str(b, 'classid') + '-' + str(b, 'id') + '.html', title: str(b, 'title').trim(),
+      artist: str(b, 'player'), intro: str(b, 'moviesay'), status: str(b, 'filetype')
+    };
+  }
+
+  function ids(url) {
+    var m = /(?:album|audio)[-\/](\d+)-(\d+)(?:-(\d+))?\.html/.exec(url);
+    if (!m) throw new Error('不认识的地址：' + url);
+    return { classId: m[1], id: m[2], no: m[3] };
+  }
+
+  function toEpisodes(k, json) {
+    return items(json, 'data.moielist').map(function (e) {
+      // control / level / ofen 不为 0 的是要登录、会员或积分才能听的
+      var free = str(e, 'control') === '0' && str(e, 'level') === '0' && str(e, 'ofen') === '0';
+      return { title: str(e, 'title').trim() || ('第 ' + str(e, 'id') + ' 集'), url: SITE + '/audio/' + k.classId + '-' + k.id + '-' + str(e, 'id') + '.html', isFree: free };
+    });
+  }
+
+  var SORTS = { '热播': 'onclick+desc', '最新': 'newstime+desc', '热评': 'plnum+desc' };
+
+  registerSource({
+    id: 'e8c2a5d47f1b4936b0d7a3c9e6f41b05', name: '书音FM', url: SITE + '/',
+    description: '有声小说、广播剧、评书、百家讲坛、相声小品、戏曲、儿童等，内容很全，分类细。直接用网站的接口，不需要登录。',
+    multipleEpisodePages: true,
+    config: [{ type: 'select', key: 'sort', label: '分类里的排序', default: '热播', options: ['热播', '最新', '热评'] }],
+
+    search: function (keywords, page) {
+      var json = call(this.host, 'act=search&mod=movie&keyword=' + Shun.enc(keywords) + '&page=' + page + '&pagesize=20');
+      return { books: items(json, 'data.list').map(toBook), totalPage: Math.max(page, int(json, 'data.totalpage', page)) };
+    },
+
+    // 大类各是一组，里面是“全部”和它的小类。大类和小类都问接口要，一次把各大类的小类一起取回来
+    categoryMenus: function () {
+      if (menus) return menus;
+      var host = this.host;
+      var top = items(call(host, 'classid=0&act=navigation&mod=column'), 'list');
+      var texts = host.getStrings(top.map(function (c) { return API + 'classid=' + str(c, 'classid') + '&act=navigation&mod=column'; }), options(), 6);
+      var result = top.map(function (c, i) {
+        var tabs = [{ title: '全部', url: 'mekui:' + str(c, 'classid') + '#1' }];
+        try {
+          if (texts[i]) items(parseJson(texts[i]), 'list').forEach(function (s) { tabs.push({ title: str(s, 'classname'), url: 'mekui:' + str(s, 'classid') + '#1' }); });
+        } catch (e) { }
+        return { title: str(c, 'classname'), tabs: tabs };
+      });
+      // 小类都取到了才记住；有没取到的下次再取一遍
+      if (texts.every(function (t) { return t !== null; })) menus = result;
+      return result;
+    },
+
+    categoryPage: function (url) {
+      var m = /^mekui:(\d+)#(\d+)$/.exec(url);
+      if (!m) throw new Error('不认识的分类地址：' + url);
+      var page = parseInt(m[2], 10);
+      var sort = SORTS[this.host.getPref('sort', '热播')] || SORTS['热播'];
+      var json = call(this.host, 'act=list&mod=movie&classid=' + m[1] + '&page=' + page + '&pagesize=20&sort=' + sort);
+      var books = items(json, 'data.list').map(toBook);
+      var total = books.length === 0 ? page : Math.max(page, int(json, 'data.totalpage', page));
+      return { books: books, currentPage: page, totalPage: total, nextUrl: page < total ? 'mekui:' + m[1] + '#' + (page + 1) : null };
+    },
+
+    bookDetail: function (bookUrl, loadEpisodes, loadFullPages) {
+      var host = this.host, k = ids(bookUrl);
+      var d = at(call(host, 'mod=movie&act=detail&id=' + k.id), 'data.detail') || {};
+      var detail = {
+        title: str(d, 'title').trim(), coverUrl: str(d, 'titlepic'), intro: str(d, 'moviesay'), artist: str(d, 'player') || str(d, 'playadmin'),
+        status: [str(d, 'filetype'), str(d, 'firstclassname')].filter(function (x) { return x; }).join(' · '), episodes: []
+      };
+      if (!loadEpisodes) return detail;
+      var base = API + 'mod=movie&act=movielist&id=' + k.id + '&pagesize=' + CHAPTERS + '&page=';
+      var first = host.getJson(base + 1, options());
+      detail.episodes = toEpisodes(k, first);
+      var pages = int(first, 'data.totalpage', 1);
+      if (loadFullPages && pages > 1) {
+        var urls = [];
+        for (var p = 2; p <= pages; p++) urls.push(base + p);
+        host.getStrings(urls, options(), 4).forEach(function (text, i) {
+          if (text === null) throw new Error('第 ' + (i + 2) + ' 页章节加载失败，请重试');
+          detail.episodes = detail.episodes.concat(toEpisodes(k, parseJson(text)));
+        });
+      }
+      return detail;
+    },
+
+    // 播放地址：参数按名字排好序拼起来，末尾加上密钥，取 MD5 当校验值（网页就是这么算的）
+    audio: function (url) {
+      var k = ids(url);
+      if (!k.no) throw new Error('不认识的章节地址：' + url);
+      var t = Math.floor(new Date().getTime() / 1000);
+      var token = this.host.md5('act=wapseries&id=' + k.id + '&mod=movie&movieId=' + k.no + '&t=' + t + '&token=' + KEY);
+      var json = this.host.getJson(API + 'act=wapseries&mod=movie&id=' + k.id + '&movieId=' + k.no + '&t=' + t + '&token=' + token, options());
+      if (int(json, 'code') !== 1 || !json.data) throw new Error(str(json, 'message') || str(json, 'msg') || '没有拿到播放地址（可能需要在网站上登录或开通会员）');
+      var audio = str(json, 'data.SeriesUrl');
+      // 主地址没有时用备用线路里第一个不为空的
+      if (!audio) items(json, 'data.signed_urls').forEach(function (u) { if (!audio && typeof u === 'string' && u) audio = u; });
+      if (!audio) throw new Error('这一集网站没有给出播放地址（可能需要在网站上登录或开通会员）');
+      return { url: audio, headers: { Referer: SITE + '/' } };
+    }
+  });
+})();
+
+// ---------- 央视听音（tv.cctv.com/ty）：央视网的“听节目”频道，用央视网自己的接口 ----------
+// 每张专辑是一本书，里面的节目是章节。没有单独的音频文件，播的是节目视频的最低码率那一路（只出声音）。
+(function () {
+  var SITE = 'https://tv.cctv.com';
+  var LIST = 'https://api.cntv.cn/newVideoset/getVideoAlbumListByPageIdTvty?serviceId=tvty&n=20';
+  var menus = null;
+
+  function options() { return { headers: { Referer: SITE + '/ty/m/index.shtml' } }; }
+
+  function albumId(url) {
+    var m = /(VIDA[0-9A-Za-z]+)/.exec(url);
+    if (!m) throw new Error('不认识的地址：' + url);
+    return m[1];
+  }
+
+  function toBook(a) {
+    return {
+      coverUrl: str(a, 'image') || str(a, 'image2'), bookUrl: str(a, 'url') || (SITE + '/' + str(a, 'id') + '.shtml'), title: str(a, 'title').trim(),
+      intro: str(a, 'brief'), status: str(a, 'sc').split(',').filter(function (x) { return x; }).slice(0, 3).join(' · ')
+    };
+  }
+
+  registerSource({
+    id: 'f5b0d8e27a3c4169b4e2c70d9a61f8b3', name: '央视听音', url: SITE + '/ty/m/index.shtml',
+    description: '央视网的“听音”频道：百家讲坛等名家讲座、评书、戏曲、历史人文、儿童、健康等，都是央视的节目。' +
+      '播放的是节目视频的声音，比普通音频费流量；不能下载到本地。',
+
+    // 搜出来的是一期期节目，按它所在的专辑归并成书
+    search: function (keywords, page) {
+      var json = this.host.getJson('https://search.cctv.com/m/if3g_search.php?page=' + page + '&qtext=' + Shun.enc(keywords) +
+        '&type=audio&sort=SCORE&pageSize=20&channel=', { headers: { Referer: 'https://search.cctv.com/m/search.php?type=audio' } });
+      var host = this.host, seen = {}, books = [];
+      items(json, 'list').forEach(function (v) {
+        var id = str(v, 'ALBUMID');
+        if (!id || seen[id]) return;
+        seen[id] = true;
+        var plain = function (s) { return host.htmlDecode(String(s).replace(/<[^>]+>/g, '')).trim(); };
+        books.push({
+          coverUrl: str(v, 'IMAGELINK'), bookUrl: str(v, 'PAGELINK').split('?')[0].replace('//tv.cctv.cn/', '//tv.cctv.com/'),
+          title: plain(str(v, 'DRETITLE')), intro: plain(str(v, 'DRECONTENT')), status: str(v, 'CHANNEL')
+        });
+      });
+      return { books: books, totalPage: Math.max(page, Math.min(50, Math.ceil(int(json, 'total') / 20))) };
+    },
+
+    // 分类来自网站“全部”页的标签：一级分类各是一组，里面是“全部”和它的二级标签
+    categoryMenus: function () {
+      if (menus) return menus;
+      var result = [{ title: '推荐', tabs: [{ title: '全部', url: 'cctv:#1' }] }];
+      var groups = {}, order = [];
+      items(this.host.getJson(SITE + '/ty/m/sxy/data.jsonp', options()), 'data.list').forEach(function (t) {
+        var fc = str(t, 'fc'), sc = str(t, 'sc');
+        if (!fc || !sc) return;
+        if (!groups[fc]) { groups[fc] = [{ title: '全部', url: 'cctv:fc=' + Shun.enc(fc) + '#1' }]; order.push(fc); }
+        groups[fc].push({ title: sc, url: 'cctv:fc=' + Shun.enc(fc) + '&sc=' + Shun.enc(sc) + '#1' });
+      });
+      order.forEach(function (fc) { result.push({ title: fc, tabs: groups[fc] }); });
+      if (order.length > 0) menus = result;
+      return result;
+    },
+
+    categoryPage: function (url) {
+      var m = /^cctv:([^#]*)#(\d+)$/.exec(url);
+      if (!m) throw new Error('不认识的分类地址：' + url);
+      var page = parseInt(m[2], 10);
+      var json = this.host.getJson(LIST + '&p=' + page + (m[1] ? '&' + m[1] : ''), options());
+      var books = items(json, 'data.list').map(toBook);
+      var total = books.length === 0 ? page : Math.max(page, Math.ceil(int(json, 'data.total') / 20));
+      return { books: books, currentPage: page, totalPage: total, nextUrl: page < total ? 'cctv:' + m[1] + '#' + (page + 1) : null };
+    },
+
+    bookDetail: function (bookUrl, loadEpisodes) {
+      var host = this.host, id = albumId(bookUrl), detail = { episodes: [] };
+      try {
+        var a = at(host.getJson('https://api.cntv.cn/NewVideoset/getVideoAlbumInfo?id=' + id + '&serviceId=tvcctv', options()), 'data') || {};
+        detail.title = str(a, 'title').trim(); detail.intro = str(a, 'brief'); detail.coverUrl = str(a, 'image');
+      } catch (e) { if (e.cancelled) throw e; }
+      if (!loadEpisodes) return detail;
+      // 专辑里的节目分两种存法（mode 0 和 1），事先不知道是哪种：先按 0 取，一期都没有再按 1 取。一页最多 100 期，按播出顺序
+      for (var mode = 0; mode <= 1 && detail.episodes.length === 0; mode++) {
+        var base = 'https://api.cntv.cn/NewVideo/getVideoListByAlbumIdNew?id=' + id + '&serviceId=tvcctv&mode=' + mode + '&pub=1&n=100&sort=asc&p=';
+        for (var p = 1; p <= 50; p++) {
+          var json = host.getJson(base + p, options());
+          var list = items(json, 'data.list');
+          list.forEach(function (v) {
+            var guid = str(v, 'guid');
+            if (guid) detail.episodes.push({ title: str(v, 'title').trim(), url: bookUrl.split('?')[0] + '?guid=' + guid });
+          });
+          if (list.length < 100 || detail.episodes.length >= int(json, 'data.total')) break;
+        }
+      }
+      detail.status = detail.episodes.length > 0 ? detail.episodes.length + ' 期' : '';
+      return detail;
+    },
+
+    // 用节目的编号问央视网要播放地址（HLS）。用手机的身份去问，给的是码率最低的那一路
+    audio: function (url) {
+      var m = /[?&]guid=([0-9a-fA-F]+)/.exec(url);
+      if (!m) throw new Error('不认识的章节地址：' + url);
+      var json = this.host.getJson('https://vdn.apps.cntv.cn/api/getHttpVideoInfo.do?pid=' + m[1], { headers: { Referer: SITE + '/' } });
+      var hls = str(json, 'hls_url');
+      if (!hls) throw new Error('央视网没有给出这期节目的播放地址' + (str(json, 'tip_msg') ? '：' + str(json, 'tip_msg') : '（可能有版权限制）'));
+      return { url: hls, headers: { Referer: SITE + '/', 'X-Media-Type': 'hls' } };
+    }
+  });
+})();
