@@ -2,6 +2,10 @@
 
 一个聚合听书工具。程序本身只是播放器，不带任何内容：听书源来自用户导入的**插件**，也可以听自己网盘和手机里的音频。
 
+## 下载
+
+- **iOS 版 3.0**（未签名 ipa）：[ssts-ios-3.0-unsigned.ipa](https://github.com/whykang/ssts--Android/raw/main/release/ssts-ios-3.0-unsigned.ipa)
+
 ## 最近更新
 
 **书源（插件包 3.0，共 26 个源）**
