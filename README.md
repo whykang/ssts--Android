@@ -4,6 +4,7 @@
 
 ## 下载
 
+- **安卓版和插件包**：[Releases](https://github.com/whykang/ssts--Android/releases)
 - **iOS 版 3.0**（未签名 ipa）：[ssts-ios-3.0-unsigned.ipa](https://github.com/whykang/ssts--Android/raw/main/release/ssts-ios-3.0-unsigned.ipa)
 
 ## 最近更新
