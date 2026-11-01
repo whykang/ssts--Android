@@ -5,7 +5,9 @@
 
 > Windows 版的插件是 .NET DLL，安卓上无法加载，所以安卓版改用脚本。接口和 Windows 版的 `SourceBase` 一一对应，移植基本是逐行翻译。
 
-完整示例：[plugins/ShunSources](../plugins/ShunSources)，34 个源，覆盖了本文提到的大部分写法。
+完整示例：[plugins/ShunSources](../plugins/ShunSources)，包含多个源，覆盖了本文提到的大部分写法。
+
+广播源示例：[tingtingfm.js](../plugins/ShunSources/tingtingfm.js) 接入听听FM公开网页，演示请求签名、电台直播、节目历史目录的游标分页、日期分组字段，以及播放时重新获取带时效签名的音频地址。电台节目单提供今天和昨天的回听；单个广播节目默认取最新一期向前30天，可在源设置切换7天、30天、90天或全部。
 
 ## 1. 插件包结构
 
@@ -82,7 +84,9 @@ registerSource({
 | `host` | 宿主注入的能力，见第 4 节 |
 
 书：`{ coverUrl, bookUrl, title, author, artist, intro, status }`，`bookUrl` 在同一个源内必须唯一。
-章节：`{ title, url, isFree, live }`，`isFree` 默认 true；`live: true` 表示这是直播流（电台），宿主会按直播来播放：不显示进度、不能拖动和下载。
+章节：`{ title, url, isFree, live, broadcastDate, startTime }`，`isFree` 默认 true；`live: true` 表示这是直播流（电台），宿主会按直播来播放：不显示进度、不能拖动和下载。
+
+广播回听可提供 `broadcastDate`（`YYYY-MM-DD`，节目所属日期）和 `startTime`（Unix 毫秒，节目开始时间）。宿主优先用日期字段按天分组，直播单独显示；没有日期字段时，可用开始时间确定日期。旧云听插件的“11月1日 08:00 节目名”标题仍兼容按天分组。普通小说无需填写这两个字段。
 
 分类标签的地址不一定是网址，可以是任意字符串，宿主只会把它原样传回 `categoryPage`，例如 `my-search:关键词#1`。
 
