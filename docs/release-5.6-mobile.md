@@ -6,7 +6,6 @@
 - **iOS 5.6**（iOS 16 及以上，未签名，需自行签名）：[ssts-ios-5.6-unsigned.ipa](https://github.com/whykang/ssts--Android/releases/download/v5.6/ssts-ios-5.6-unsigned.ipa)
 - **插件合集 5.6**（38 个源，Android / iOS / Mac / Windows 通用）：[Sources-v5.6.zip](https://github.com/whykang/ssts--Android/releases/download/v5.6/Sources-v5.6.zip)
 - **国内插件导入直链**：https://gitee.com/whykan/ssxz/raw/master/Sources-v5.6.zip
-- **文件校验**：[SHA256SUMS.txt](https://github.com/whykang/ssts--Android/releases/download/v5.6/SHA256SUMS.txt)
 
 插件页选择“从网址导入”并粘贴国内直链，或下载 ZIP 后从文件导入。iOS IPA 需要自行签名后安装。
 
@@ -49,8 +48,3 @@
 - 新增 **悦听有声书**，合集由 37 个源增加至 38 个。
 - 悦听支持分类浏览、封面、目录及音频解析，不参与搜索；部分音频按原站多集合并的文件展示。
 - 更新部分搜索验证接口，便于新版应用直接接收验证页结果。
-
-## 验证及范围
-
-安卓使用用户提供的已编译 5.6 APK 原样上传，版本和签名校验通过。iOS 完成 Release 真机架构构建、版本和 IPA 结构检查；未替代实体 iPhone 的安装与播放回归。
-插件合集通过加载及 ZIP 校验。TV 未修改、未构建、未上传。
