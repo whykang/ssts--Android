@@ -16,35 +16,27 @@
 
 ## 下载
 
-- **安卓版 5.5**：[ssts-v5.5.apk](https://github.com/whykang/ssts--Android/releases/download/v5.5/ssts-v5.5.apk)
-- **iOS 版 5.5**（未签名 ipa，需要 iOS 16 及以上）：[ssts-ios-5.5-unsigned.ipa](https://github.com/whykang/ssts--Android/releases/download/v5.5/ssts-ios-5.5-unsigned.ipa)
-- **插件包 5.5**（37 个源，安卓和 iOS 通用）：[Sources-v5.5.zip](https://github.com/whykang/ssts--Android/releases/download/v5.5/Sources-v5.5.zip)
+- **安卓版 5.6**：[ssts-v5.6.apk](https://github.com/whykang/ssts--Android/releases/download/v5.6/ssts-v5.6.apk)
+- **iOS 版 5.6**（未签名 ipa，需要 iOS 16 及以上）：[ssts-ios-5.6-unsigned.ipa](https://github.com/whykang/ssts--Android/releases/download/v5.6/ssts-ios-5.6-unsigned.ipa)
+- **插件包 5.6**（38 个源，Android / iOS / Mac / Windows 通用）：[Sources-v5.6.zip](https://github.com/whykang/ssts--Android/releases/download/v5.6/Sources-v5.6.zip)
 - **在线导入插件**：不用下载文件，在“插件”页选择从网址导入，填入下面的地址即可（国内网络可直接访问）
 
   ```
-  https://gitee.com/whykan/ssxz/raw/master/Sources-v5.5.zip
+  https://gitee.com/whykan/ssxz/raw/master/Sources-v5.6.zip
   ```
 
 - 历史版本：[Releases](https://github.com/whykang/ssts--Android/releases)
 
-## 最近更新（5.5）
+## 最近更新（5.6）
 
-### 程序更新
+- **MCP 插件开发**：安卓、iOS 可通过局域网连接 AI，读取内置指南，制作、调试、安装和导出插件；指南内含四端通用完整示例及电台回听日期/时间分组写法。
+- **WMA 播放**：支持网盘和本地 WMA、拖动及断点恢复；改进 iOS 换集与低采样率兼容性。
+- **播放体验**：自动下一集从头播放，手动选集恢复进度；已听完章节可重新播放；目录显示每集收听进度，定时可自定义时长。
+- **云同步**：同步每集进度、完成状态和手动封面；可选同步插件，默认关闭，支持高版本合并、删除同步和手动重新导入恢复。
+- **搜索与封面**：验证页已有结果直接返回；网盘新增图片可更新自动封面，保留手动封面。
+- **插件合集 5.6**：38 个源，新增不参与搜索的悦听有声书。
 
-- **每集独立保存播放进度**：第一集听到 12:30，第二集听到 05:00，切回各集时分别从各自的位置继续。
-- **手动更换封面**：详情页菜单新增“更换封面”，可修改关键词搜索不同来源的封面，也可从本地选择图片；搜索期间即可选中候选，手动选择独立保存，不被目录刷新覆盖。
-- **书籍状态**：支持手动设置连载或完本、跟随来源；完本且已有目录缓存时不自动刷新，没有缓存时正常加载，手动刷新仍然可用。
-- **广播回听按日期分组**：便于按天查找节目，兼容旧插件；普通小说目录保留原有分段。
-- 插件空白页的导入入口可选择从文件导入或从网址导入。
-- **后台任务优化**：降低普通后台检查频率，暂停且无待处理任务时停止轮询；播放期间每 30 秒保存进度，暂停、切集等操作立即保存。定时关闭、跳过片尾和音量渐弱阶段保留必要检查精度。
-- iOS 静音检测改为仅在开启“跳过静音”且实际播放时运行，并改进拖动进度的提交、等待与结果校验。
-
-### 插件更新
-
-- 新增 **听听 FM**：北京电台直播、节目搜索和历史回听；历史范围可选 7 天、30 天、90 天或全部，以来源实际提供的内容为准。
-- 广播回听章节提供日期和时间信息，配合新版应用按日期分组，同时兼容旧版应用。
-
-完整更新说明见 [5.5 发布说明](docs/release-5.5-mobile.md)。
+完整更新说明见 [5.6 发布说明](docs/release-5.6-mobile.md)。iOS MCP 需保持应用前台；插件删除同步需其他设备更新到支持该功能的版本。TV 未修改。
 
 ## 界面预览
 
@@ -67,12 +59,12 @@
 - **发现**：按源浏览分类，一键切换听书源，滚动到底自动加载下一页，封面网格 / 列表两种显示
 - **聚合搜索**：多个源同时搜索，结果按源筛选；需要人机验证的源可以在应用内完成验证
 - **书架**：收藏的书和最近播放，记住每本书及每一集的播放位置，支持分类与连载 / 完本状态
-- **云同步**：通过坚果云（WebDAV）在安卓、iOS、Mac 之间同步书架、播放记录、听书进度和书签
+- **云同步**：通过坚果云（WebDAV）在安卓、iOS、Mac 之间同步书架、播放记录、每集进度、书签和手动封面；可选同步插件及删除记录，默认关闭
 
 **播放**
 
 - 后台播放，通知栏 / 锁屏 / 耳机控制
-- 每集独立断点续播、自动播放下一集
+- 每集独立断点续播；自动续播下一集从头开始，手动选集恢复进度；目录显示收听状态
 - 倍速 0.5x – 3x、音量 0 – 500%，每本书记住自己的倍速和音量；可以跳过静音
 - 下载到本机离线听，可以按区间下载；播放时自动预缓存后面几集
 - 书签：记下某一集的某个位置，可以写备注
@@ -90,7 +82,7 @@
 
 这个仓库放的是插件相关的部分：开发文档、示例插件的源码和打好的插件包。
 
-- 📦 [plugins/dist/ShunSources.zip](plugins/dist/ShunSources.zip)：打好的插件包（5.5，37 个源），下载后在 App 的“插件”页点 `+` →“从文件导入 zip”
+- 📦 [plugins/dist/ShunSources.zip](plugins/dist/ShunSources.zip)：打好的插件包（5.6，38 个源），下载后在 App 的“插件”页点 `+` →“从文件导入 zip”
 
 - 📖 [插件开发指南](docs/plugin-development.md)：插件包结构、源的写法、宿主提供的能力、调试和打包
 - 🧩 [plugins/ShunSources](plugins/ShunSources)：示例插件的源码，覆盖了文档里提到的大部分写法

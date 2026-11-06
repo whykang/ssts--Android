@@ -110,6 +110,16 @@ function pageBarSource(def) {
     searchVerificationDesktop: true,
     searchDelaySeconds: 6, // 网站限制两次搜索的间隔
 
+    // A positive result from the visible page avoids submitting a second rate-limited search.
+    searchVerificationResult: function (html, url, keywords) {
+      if (url.indexOf(site) !== 0) return null;
+      var doc = this.host.parseHtml(html, url);
+      var books = parseBooks(doc.first('.row3.row-b').select('li'));
+      if (!books.length) return null;
+      var last = Shun.findByText(doc.first('.pagebar.ta-c.mb15 > span'), 'a', '尾页');
+      return { verified: true, books: books, totalPage: regexInt(last.absUrl('href'), /page=(\d+)/, 1) };
+    },
+
     search: function (keywords, page) {
       var doc = Shun.getDoc(this.host, site + 'search.php?page=' + page + '&searchword=' + Shun.enc(keywords) + '&searchtype=', true);
       var last = Shun.findByText(doc.first('.pagebar.ta-c.mb15 > span'), 'a', '尾页');
@@ -193,6 +203,25 @@ registerSource({
     });
     var last = Shun.findByText(doc.first('.mb15 > span'), 'a', '尾页');
     return { books: books, totalPage: regexInt(last.absUrl('href'), /page=(\d+)/, page) };
+  },
+
+  searchVerificationResult: function (html, url, keywords) {
+    if (url.indexOf('https://22ting.com/') !== 0) return null;
+    var doc = this.host.parseHtml(html, url);
+    var books = [];
+    doc.select('.row-b > li').forEach(function (li) {
+      var a = li.first('.clearfix > section > .mb5 > a');
+      if (!a.exists()) return;
+      books.push({
+        coverUrl: li.first('.clearfix > a > span > img').absUrl('src'), bookUrl: a.absUrl('href'), title: a.text(),
+        author: li.first('.clearfix > section > .mb5 > .f-gray').text(),
+        intro: li.first('.clearfix > section > .mb5 > .f-12').text(),
+        status: Shun.nth(li.first('.clearfix > section').select('p'), 1).text()
+      });
+    });
+    if (!books.length) return null;
+    var last = Shun.findByText(doc.first('.mb15 > span'), 'a', '尾页');
+    return { verified: true, books: books, totalPage: regexInt(last.absUrl('href'), /page=(\d+)/, 1) };
   },
 
   categoryMenus: function () {

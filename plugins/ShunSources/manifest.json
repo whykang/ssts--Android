@@ -1,7 +1,18 @@
 {
   "name": "ShunSources",
-  "version": "5.5",
+  "version": "5.6",
   "author": "shun（移植）",
   "description": "听书源合集（从 Windows 版 ShunSources.Plugin 移植）",
-  "scripts": ["common.js", "cms.js", "sites.js", "api.js", "zblog.js", "ximalaya.js", "douyin.js", "radio.js", "tingtingfm.js"]
+  "scripts": [
+    "common.js",
+    "cms.js",
+    "sites.js",
+    "api.js",
+    "zblog.js",
+    "ximalaya.js",
+    "douyin.js",
+    "radio.js",
+    "tingtingfm.js",
+    "ytysxs.js"
+  ]
 }
