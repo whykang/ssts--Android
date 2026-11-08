@@ -1,13 +1,17 @@
-# 随身听书 5.6（Android / iOS）
+# 随身听书 5.6（Android / iOS，安装包已更新至 5.6.1）
 
 ## 下载与插件导入
 
-- **Android 5.6**（Android 7.0 及以上）：[ssts-v5.6.apk](https://github.com/whykang/ssts--Android/releases/download/v5.6/ssts-v5.6.apk)
-- **iOS 5.6**（iOS 16 及以上，未签名，需自行签名）：[ssts-ios-5.6-unsigned.ipa](https://github.com/whykang/ssts--Android/releases/download/v5.6/ssts-ios-5.6-unsigned.ipa)
+- **Android 5.6.1**（Android 7.0 及以上）：[ssts-v5.6.1.apk](https://github.com/whykang/ssts--Android/releases/download/v5.6/ssts-v5.6.1.apk)
+- **iOS 5.6.1**（iOS 16 及以上，未签名，需自行签名）：[ssts-ios-5.6.1-unsigned.ipa](https://github.com/whykang/ssts--Android/releases/download/v5.6/ssts-ios-5.6.1-unsigned.ipa)
 - **插件合集 5.6**（38 个源，Android / iOS / Mac / Windows 通用）：[Sources-v5.6.zip](https://github.com/whykang/ssts--Android/releases/download/v5.6/Sources-v5.6.zip)
 - **国内插件导入直链**：https://gitee.com/whykan/ssxz/raw/master/Sources-v5.6.zip
 
 插件页选择“从网址导入”并粘贴国内直链，或下载 ZIP 后从文件导入。iOS IPA 需要自行签名后安装。
+
+## 5.6.1 修复
+
+- 修复自动续播下一集时未跳过片头的问题：自动续播忽略旧断点，仍按设置跳过片头；手动选集继续恢复各集进度。
 
 ## 相比 5.5 的程序更新
 
@@ -15,7 +19,7 @@
 
 - 安卓、iOS 增加 WMA 播放支持，兼容无扩展名的网盘音频链接，支持拖动与每集独立进度恢复。
 - iOS 修复 WMA 切回上一集时卡住的问题；低采样率 WMA 转换为 48 kHz 输出，提高播放兼容性。
-- 自动续播下一集从 00:00 开始，不读取旧断点或跳过片头；手动选集、上一集和下一集仍恢复各集进度。
+- 自动续播下一集忽略旧断点，并按设置跳过片头；手动选集、上一集和下一集仍恢复各集进度。
 - 点击已听完的章节会从头重播，不会立即跳到下一集。
 - 详情页和播放页目录显示每集“听至 xx:xx”或“已听完”。
 - 定时关闭增加自定义时长。

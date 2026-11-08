@@ -16,8 +16,8 @@
 
 ## 下载
 
-- **安卓版 5.6**：[ssts-v5.6.apk](https://github.com/whykang/ssts--Android/releases/download/v5.6/ssts-v5.6.apk)
-- **iOS 版 5.6**（未签名 ipa，需要 iOS 16 及以上）：[ssts-ios-5.6-unsigned.ipa](https://github.com/whykang/ssts--Android/releases/download/v5.6/ssts-ios-5.6-unsigned.ipa)
+- **安卓版 5.6.1**：[ssts-v5.6.1.apk](https://github.com/whykang/ssts--Android/releases/download/v5.6/ssts-v5.6.1.apk)
+- **iOS 版 5.6.1**（未签名 ipa，需要 iOS 16 及以上）：[ssts-ios-5.6.1-unsigned.ipa](https://github.com/whykang/ssts--Android/releases/download/v5.6/ssts-ios-5.6.1-unsigned.ipa)
 - **插件包 5.6**（38 个源，Android / iOS / Mac / Windows 通用）：[Sources-v5.6.zip](https://github.com/whykang/ssts--Android/releases/download/v5.6/Sources-v5.6.zip)
 - **在线导入插件**：不用下载文件，在“插件”页选择从网址导入，填入下面的地址即可（国内网络可直接访问）
 
@@ -27,7 +27,9 @@
 
 - 历史版本：[Releases](https://github.com/whykang/ssts--Android/releases)
 
-## 最近更新（5.6）
+## 最近更新（5.6.1）
+
+- **修复自动续播**：自动下一集忽略旧断点，仍按设置跳过片头；手动选集继续恢复进度。
 
 - **MCP 插件开发**：安卓、iOS 可通过局域网连接 AI，读取内置指南，制作、调试、安装和导出插件；指南内含四端通用完整示例及电台回听日期/时间分组写法。
 - **WMA 播放**：支持网盘和本地 WMA、拖动及断点恢复；改进 iOS 换集与低采样率兼容性。
