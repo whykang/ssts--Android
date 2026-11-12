@@ -1,6 +1,6 @@
 ## 关于后续插件分享的说明
 
-目前安卓版和 iOS 版已支持 MCP，电脑版也将陆续支持。通过 WorkBuddy、DeepSeek Harness、Codex 等 AI 工具连接应用，基本只需一句话，就能让 AI 协助制作、调试和安装插件。例如：
+目前安卓版和 iOS 版以及电脑版均已支持 MCP，通过 WorkBuddy、DeepSeek Harness、Codex 等 AI 工具连接应用，基本只需一句话，就能让 AI 协助制作、调试和安装插件。例如：
 
 > 连接 MCP：`http://设备IP:8765/mcp`，帮我制作 `https://网站地址` 的听书源，测试通过后安装到应用中。
 
