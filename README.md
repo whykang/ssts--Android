@@ -16,29 +16,27 @@
 
 ## 下载
 
-- **安卓版 5.6.1**：[ssts-v5.6.1.apk](https://github.com/whykang/ssts--Android/releases/download/v5.6/ssts-v5.6.1.apk)
-- **iOS 版 5.6.1**（未签名 ipa，需要 iOS 16 及以上）：[ssts-ios-5.6.1-unsigned.ipa](https://github.com/whykang/ssts--Android/releases/download/v5.6/ssts-ios-5.6.1-unsigned.ipa)
-- **插件包 5.6**（38 个源，Android / iOS / Mac / Windows 通用）：[Sources-v5.6.zip](https://github.com/whykang/ssts--Android/releases/download/v5.6/Sources-v5.6.zip)
+- **安卓版 5.7**：[ssts-v5.7.apk](https://github.com/whykang/ssts--Android/releases/download/v5.7/ssts-v5.7.apk)
+- **iOS 版 5.7**（未签名 ipa，需要 iOS 16 及以上）：[ssts-ios-5.7-unsigned.ipa](https://github.com/whykang/ssts--Android/releases/download/v5.7/ssts-ios-5.7-unsigned.ipa)
+- **插件包 5.7**（Android / iOS / Mac / Windows 通用）：[Sources-v5.7.zip](https://github.com/whykang/ssts--Android/releases/download/v5.7/Sources-v5.7.zip)
 - **在线导入插件**：不用下载文件，在“插件”页选择从网址导入，填入下面的地址即可（国内网络可直接访问）
 
   ```
-  https://gitee.com/whykan/ssxz/raw/master/Sources-v5.6.zip
+  https://gitee.com/whykan/ssxz/raw/master/Sources-v5.7.zip
   ```
 
 - 历史版本：[Releases](https://github.com/whykang/ssts--Android/releases)
 
-## 最近更新（5.6.1）
+## 最近更新（5.7）
 
-- **修复自动续播**：自动下一集忽略旧断点，仍按设置跳过片头；手动选集继续恢复进度。
-
-- **MCP 插件开发**：安卓、iOS 可通过局域网连接 AI，读取内置指南，制作、调试、安装和导出插件；指南内含四端通用完整示例及电台回听日期/时间分组写法。
-- **WMA 播放**：支持网盘和本地 WMA、拖动及断点恢复；改进 iOS 换集与低采样率兼容性。
-- **播放体验**：自动下一集从头播放，手动选集恢复进度；已听完章节可重新播放；目录显示每集收听进度，定时可自定义时长。
-- **云同步**：同步每集进度、完成状态和手动封面；可选同步插件，默认关闭，支持高版本合并、删除同步和手动重新导入恢复。
-- **搜索与封面**：验证页已有结果直接返回；网盘新增图片可更新自动封面，保留手动封面。
-- **插件合集 5.6**：38 个源，新增不参与搜索的悦听有声书。
-
-完整更新说明见 [5.6 发布说明](docs/release-5.6-mobile.md)。iOS MCP 需保持应用前台；插件删除同步需其他设备更新到支持该功能的版本。TV 未修改。
+- **播放恢复**：系统、蓝牙或车机发出的停止指令按暂停处理。播放器停止后，点击播放可从原进度恢复。已在一加 13 实测通过。
+- **来源异常处理**：书源不可用时，已下载章节仍可播放。未下载章节会提示原因，自动续播和预缓存会跳过不可用内容。
+- **插件管理**：支持一键启用或停用整个插件包。包内任一书源启用时，整包开关显示为开启。
+- **书签管理**：长按书名可批量删除该书的全部书签，删除会同步到其他设备。相关单测通过。
+- **预缓存**：集数、仅 Wi‑Fi 和保留选项合并到一个设置入口。保留预缓存默认关闭，开启后已听章节的预缓存会保留。
+- **音量放大**：单本书音量上限提高至 1000%，快捷档位为 100%、200%、300%、500% 和 1000%。
+- **天翼云盘**：新增天翼云盘，支持手机网页登录、目录浏览和音频播放。
+- **插件合集 5.7**：新增央视纯音频直播，涵盖 20 个频道，支持频道搜索和节目单。新增「apple博客」，支持苹果播客目录搜索、RSS 链接和按主题浏览。
 
 ## 界面预览
 
@@ -84,7 +82,7 @@
 
 这个仓库放的是插件相关的部分：开发文档、示例插件的源码和打好的插件包。
 
-- 📦 [plugins/dist/ShunSources.zip](plugins/dist/ShunSources.zip)：打好的插件包（5.6，38 个源），下载后在 App 的“插件”页点 `+` →“从文件导入 zip”
+- 📦 [Sources-v5.7.zip](https://github.com/whykang/ssts--Android/releases/download/v5.7/Sources-v5.7.zip)：打好的插件包（5.7），下载后在 App 的“插件”页点 `+` →“从文件导入 zip”
 
 - 📖 [插件开发指南](docs/plugin-development.md)：插件包结构、源的写法、宿主提供的能力、调试和打包
 - 🧩 [plugins/ShunSources](plugins/ShunSources)：示例插件的源码，覆盖了文档里提到的大部分写法
