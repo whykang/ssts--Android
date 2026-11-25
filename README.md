@@ -2,6 +2,8 @@
 
 **支持中国大陆及其他地区的 App Store，欢迎下载体验！**
 
+**App Store 上架版不支持插件。如需使用插件，请下载下方的 iOS IPA 安装包，自行签名后安装。**
+
 在 App Store 搜索「随身听书」，或扫描下方二维码下载。也可以[点击这里直接前往 App Store](https://apps.apple.com/cn/app/随身听书/id6833734340)。
 
 <a href="https://apps.apple.com/cn/app/随身听书/id6833734340">
