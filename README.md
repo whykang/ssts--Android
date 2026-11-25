@@ -1,3 +1,15 @@
+## 随身听书 iOS 版现已上架 App Store
+
+**支持中国大陆及其他地区的 App Store，欢迎下载体验！**
+
+在 App Store 搜索「随身听书」，或扫描下方二维码下载。也可以[点击这里直接前往 App Store](https://apps.apple.com/cn/app/随身听书/id6833734340)。
+
+<a href="https://apps.apple.com/cn/app/随身听书/id6833734340">
+  <img src="assets/appstore-qrcode.png" alt="扫描二维码下载随身听书 iOS 版" width="220">
+</a>
+
+---
+
 ## 关于后续插件分享的说明
 
 目前安卓版和 iOS 版以及电脑版均已支持 MCP，通过 WorkBuddy、DeepSeek Harness、Codex 等 AI 工具连接应用，基本只需一句话，就能让 AI 协助制作、调试和安装插件。例如：
